@@ -1,55 +1,174 @@
-package xyz.zcraft.idk.ui;
+package xyz.zcraft.util.iis.ui;
 
-import xyz.zcraft.idk.util.Entry;
+import xyz.zcraft.util.iis.util.CustomTreeModel;
+import xyz.zcraft.util.iis.util.Node;
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeSelectionModel;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
 
 public class MainUI {
+    private final Node rootNode;
+    public JFrame jFrame;
     private JTree entryTree;
     private JPanel root;
-    private JButton newCatBtn;
-    private JButton newObjBtn;
-    private JButton rankBtn;
-    private JButton aboutBtn;
-    public JFrame jFrame;
-    private HashMap<String, DefaultMutableTreeNode> catMap;
+    private boolean changed;
+    private boolean autoRefresh = true;
+    private Path origPath;
 
-    public MainUI() {
-        newObjBtn.addActionListener(e -> new AddEntryUI(this));
-        newCatBtn.addActionListener(e -> {
-            String s = JOptionPane.showInputDialog("分类名称:");
-            if(s == null || s.trim().equals("")) return;
-            if(catList.contains(s)) {
-                JOptionPane.showMessageDialog(jFrame, "分类已存在");
-            } else {
-                catList.add(s);
+    public MainUI(Node rootNode, Path origPath) {
+        this.rootNode = rootNode;
+        this.origPath = origPath;
+    }
 
-                recreateTree();
-            }
+    private void openAbout() {
+        new AboutUI(jFrame);
+    }
+
+    private void openStat() {
+        new StatUI(jFrame, rootNode);
+    }
+
+    private void addObj() {
+        new EntryAddUI(jFrame, rootNode, () -> {
+            changed = true;
+            if (autoRefresh) recreateTree();
         });
-        rankBtn.addActionListener(e -> new RankUI(this));
-        aboutBtn.addActionListener(e -> new AboutUI(this));
+    }
+
+    private void initMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+
+        JMenu fileMenu = new JMenu("文件");
+
+        JMenuItem saveItem = new JMenuItem("保存");
+        saveItem.addActionListener(e -> save());
+        fileMenu.add(saveItem);
+
+        JMenuItem saveAsItem = new JMenuItem("另存为");
+        saveAsItem.addActionListener(e -> saveAs());
+        fileMenu.add(saveAsItem);
+
+        JMenuItem closeItem = new JMenuItem("关闭");
+        closeItem.addActionListener(e -> close());
+        fileMenu.add(closeItem);
+
+        menuBar.add(fileMenu);
+
+        JMenu editMenu = new JMenu("编辑");
+
+        JMenuItem addItem = new JMenuItem("添加项目");
+        addItem.addActionListener(e -> addObj());
+        editMenu.add(addItem);
+
+        JMenuItem editItem = new JMenuItem("编辑项目");
+        editItem.addActionListener(e -> openEditWindow());
+        editMenu.add(editItem);
+
+        menuBar.add(editMenu);
+
+        JMenu viewMenu = new JMenu("查看");
+
+        JMenuItem statItem = new JMenuItem("统计信息");
+        statItem.addActionListener(e -> openStat());
+        viewMenu.add(statItem);
+
+        JMenuItem refreshItem = new JMenuItem("刷新");
+        refreshItem.addActionListener(e -> recreateTree());
+        viewMenu.add(refreshItem);
+
+        JCheckBoxMenuItem autoRefreshItem = new JCheckBoxMenuItem("自动刷新");
+        autoRefreshItem.setState(true);
+        autoRefreshItem.addActionListener(e -> autoRefresh = autoRefreshItem.getState());
+        viewMenu.add(autoRefreshItem);
+
+        menuBar.add(viewMenu);
+
+        JMenu helpMenu = new JMenu("帮助");
+
+        JMenuItem aboutItem = new JMenuItem("关于");
+        aboutItem.addActionListener(e -> openAbout());
+        helpMenu.add(aboutItem);
+
+        menuBar.add(helpMenu);
+
+        jFrame.setJMenuBar(menuBar);
+    }
+
+    private void openEditWindow() {
+        if (entryTree.getLastSelectedPathComponent() == null) return;
+        new EntryEditUI(jFrame, ((Node) entryTree.getLastSelectedPathComponent()), rootNode, () -> {
+            changed = true;
+            if (autoRefresh) recreateTree();
+        });
+    }
+
+    private void close() {
+        if (changed) {
+            final int i = JOptionPane.showConfirmDialog(jFrame, "数据未保存，确定要退出吗？", "提示", JOptionPane.OK_CANCEL_OPTION);
+            if (i == 0) {
+                jFrame.dispose();
+            }
+        } else {
+            jFrame.dispose();
+        }
+    }
+
+    private Path askPath() {
+        JFileChooser jFileChooser = new JFileChooser();
+        jFileChooser.setFileFilter(new FileNameExtensionFilter("ItemInSlot 文件 (*.iis)", "iis"));
+        jFileChooser.showSaveDialog(jFrame);
+        File selectedFile = jFileChooser.getSelectedFile();
+        if (selectedFile == null) return null;
+        if (!selectedFile.getName().endsWith(".iis")) {
+            selectedFile = new File(jFileChooser.getCurrentDirectory(), selectedFile.getName() + ".iis");
+        }
+        return selectedFile.toPath();
+    }
+
+    private void saveAs() {
+        var selected = askPath();
+        if (selected == null) return;
+        try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(Files.newOutputStream(selected))) {
+            if (!Files.exists(origPath)) Files.delete(origPath);
+            objectOutputStream.writeObject(rootNode);
+            objectOutputStream.flush();
+            changed = false;
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(jFrame, "保存至 " + selected.toAbsolutePath() + " 失败:" + ex, "错误", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void save() {
+        if (origPath == null) {
+            final Path path = askPath();
+            if (path == null) return;
+            origPath = path;
+        }
+
+        try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(Files.newOutputStream(origPath))) {
+            if (Files.exists(origPath.getParent())) Files.createDirectories(origPath.getParent());
+            if (!Files.exists(origPath)) Files.delete(origPath);
+            objectOutputStream.writeObject(rootNode);
+            objectOutputStream.flush();
+            changed = false;
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(jFrame, "保存至 " + origPath.toAbsolutePath() + " 失败:" + ex, "错误", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public void create() {
         jFrame = new JFrame();
         jFrame.setContentPane(root);
         jFrame.pack();
+        jFrame.setSize(400, 200);
         jFrame.setLocationRelativeTo(null);
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -58,116 +177,22 @@ public class MainUI {
         jFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                Path dataPath = Path.of("data", "entries.dat");
-                try (ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(dataPath))) {
-                    oos.writeObject(entryList);
-                } catch (IOException ex) {
-                    JOptionPane.showMessageDialog(null, "程序遇到了严重错误，即将退出。错误信息如下:" + ex, "错误", JOptionPane.ERROR_MESSAGE);
-                    System.exit(0);
-                }
+                if (!changed) System.exit(0);
+                final int i = JOptionPane.showConfirmDialog(jFrame, "数据未保存，确定要退出吗？", "提示", JOptionPane.OK_CANCEL_OPTION);
+                if (i == 0) System.exit(0);
             }
         });
 
-        initTree();
+        jFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+
+        recreateTree();
+        initMenuBar();
 
         jFrame.setVisible(true);
     }
 
-    private List<Entry> entryList = new LinkedList<>();
-    private final List<String> catList = new LinkedList<>();
-
-    public void addEntry(Entry entry) {
-        if(isDuplicated(entry)) {
-            JOptionPane.showMessageDialog(jFrame, "项目已存在");
-        } else {
-            entryList.add(entry);
-            recreateTree();
-        }
-    }
-
-    public boolean isDuplicated(Entry entry) {
-        return entryList.contains(entry);
-    }
-
-    public boolean isDuplicated(String name, String cat) {
-        return entryList.stream().anyMatch(e -> Objects.equals(e.getName(), name) && Objects.equals(e.getCat(), cat));
-    }
-
-    public List<String> getCats() {
-        return catList;
-    }
-
-    private void initTree() {
-        Path dataPath = Path.of("data","entries.dat");
-        if (!Files.exists(dataPath)) {
-            entryList = new LinkedList<>();
-        } else {
-            try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(dataPath))) {
-                //noinspection unchecked
-                entryList = (List<Entry>) ois.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                JOptionPane.showMessageDialog(null, "程序遇到了严重错误，即将退出。错误信息如下:" + e, "错误", JOptionPane.ERROR_MESSAGE);
-                System.exit(0);
-            }
-        }
-
-        recreateTree();
-    }
-
     void recreateTree() {
-        System.out.println("Recreating tree");
-        catMap = new HashMap<>();
-
-        DefaultMutableTreeNode topNode = new DefaultMutableTreeNode("项目");
-
-        catList.forEach(e -> catMap.putIfAbsent(e, new DefaultMutableTreeNode(e){
-            @Override
-            public boolean isLeaf() {
-                return false;
-            }
-        }));
-
-        for (Entry entry : entryList) {
-            if (!catList.contains(entry.getCat())) {
-                catList.add(entry.getCat());
-                catMap.putIfAbsent(entry.getCat(), new DefaultMutableTreeNode(entry.getCat()){
-                    @Override
-                    public boolean isLeaf() {
-                        return false;
-                    }
-                });
-            }
-            DefaultMutableTreeNode newChild = new DefaultMutableTreeNode(entry);
-            newChild.setAllowsChildren(false);
-            catMap.get(entry.getCat()).add(newChild);
-        }
-
-        for (DefaultMutableTreeNode defaultMutableTreeNode : catMap.values()) {
-            topNode.add(defaultMutableTreeNode);
-        }
-
-        entryTree.setModel(new DefaultTreeModel(topNode));
-        entryTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-
-        entryTree.addTreeSelectionListener(e -> {
-            if (entryTree.getSelectionModel().getSelectionPath() != null && ((DefaultMutableTreeNode) entryTree.getLastSelectedPathComponent()).getUserObject() instanceof Entry entry) {
-                final EntryEditUI entryEditUI = new EntryEditUI(this, entry);
-                System.out.println(entry);
-                if(!entryEditUI.show()) recreateTree();
-                entryTree.clearSelection();
-            }
-        });
-
-        entryTree.setShowsRootHandles(false);
-    }
-
-    public void removeEntry(Entry oldEntry) {
-        entryList.remove(oldEntry);
-
-        recreateTree();
-    }
-
-    public List<Entry> getEntries() {
-        return entryList;
+        entryTree.setModel(new CustomTreeModel(rootNode));
+        entryTree.updateUI();
     }
 }

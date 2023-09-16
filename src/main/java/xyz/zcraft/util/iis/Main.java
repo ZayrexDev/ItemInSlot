@@ -1,8 +1,7 @@
-package xyz.zcraft.idk;
+package xyz.zcraft.util.iis;
 
 import com.formdev.flatlaf.FlatLightLaf;
-import xyz.zcraft.idk.ui.ActivateUI;
-import xyz.zcraft.idk.ui.MainUI;
+import xyz.zcraft.util.iis.ui.MenuUI;
 
 import java.io.IOException;
 import java.util.Properties;
@@ -16,18 +15,14 @@ public class Main {
 
         FlatLightLaf.setup();
 
-        final ActivateUI activateUI = new ActivateUI();
+        launch();
     }
 
     public static String getProperty(String key) {
         return properties.getProperty(key);
     }
 
-    public static void setProperty(String key, String value) {
-        properties.setProperty(key, value);
-    }
-
-    public static void openMain() {
-        new MainUI().create();
+    public static void launch() {
+        new MenuUI();
     }
 }

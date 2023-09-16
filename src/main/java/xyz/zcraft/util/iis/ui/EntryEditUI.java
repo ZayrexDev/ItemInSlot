@@ -1,17 +1,17 @@
-package xyz.zcraft.idk.ui;
+package xyz.zcraft.util.iis.ui;
 
-import xyz.zcraft.idk.util.Entry;
-import xyz.zcraft.idk.util.Mark;
+import xyz.zcraft.util.iis.util.Mark;
+import xyz.zcraft.util.iis.util.Node;
 
 import javax.swing.*;
+import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Objects;
 
 public class EntryEditUI {
     private final JDialog dialog;
     private final DefaultListModel<Mark> model;
-    private final Entry oldEntry;
+    private boolean markChanged = false;
     private JTextField nameField;
     private JButton confirmBtn;
     private JButton delBtn;
@@ -20,51 +20,63 @@ public class EntryEditUI {
     private JButton addMarkBtn;
     private JButton delMarkBtn;
     private JPanel rootPane;
-    private JComboBox<String> catCombo;
     private JLabel editTimeLbl;
     private JButton saveMarkBtn;
     private JPanel markEditPane;
     private JTextField markTitleField;
+    private JPanel pathPane;
+    private JPanel markPane;
+    private JTextField pathField;
+    private JButton browseBtn;
+    private Node selectedParent = null;
 
-    public EntryEditUI(MainUI mainUI, Entry selectedEntry) {
-        oldEntry = selectedEntry;
-
-        dialog = new JDialog(mainUI.jFrame, "编辑项目", true);
+    public EntryEditUI(Frame owner, Node selected, Node root, Runnable onEdit) {
+        dialog = new JDialog(owner, "编辑项目", true);
         dialog.setContentPane(rootPane);
         dialog.pack();
-        dialog.setLocationRelativeTo(mainUI.jFrame);
+        dialog.setLocationRelativeTo(owner);
 
-        nameField.setText(selectedEntry.getName());
-        catCombo.setModel(new DefaultComboBoxModel<>(mainUI.getCats().toArray(new String[0])));
-        catCombo.setSelectedItem(selectedEntry.getCat());
+        nameField.setText(selected.getTitle());
 
         model = new DefaultListModel<>();
-        model.addAll(oldEntry.getMarks());
+        model.addAll(selected.getMarks());
         markJList.setModel(model);
         markJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+        if (selected.getParent() == null) {
+            pathField.setText("(根节点)");
+            browseBtn.setEnabled(false);
+        } else {
+            pathField.setText(selected.getParent().getPathString());
+        }
+
         delBtn.addActionListener(e -> {
-            mainUI.removeEntry(oldEntry);
+            selected.getParent().getChild().remove(selected);
+            onEdit.run();
             dialog.dispose();
         });
 
         confirmBtn.addActionListener(e -> {
-            if ((!Objects.equals(oldEntry.getCat(), Objects.requireNonNull(catCombo.getSelectedItem()).toString()) || !Objects.equals(oldEntry.getName(), Objects.requireNonNull(nameField.getText())) && mainUI.isDuplicated(nameField.getText(), Objects.requireNonNull(catCombo.getSelectedItem()).toString()))) {
-                JOptionPane.showMessageDialog(dialog, "项目重复");
-                return;
+            if (selected.getTitle().equals(nameField.getText())
+                    && selectedParent == null
+                    && !markChanged) {
+                dialog.dispose();
+            } else {
+                System.out.println("ee");
+                selected.setTitle(nameField.getText());
+                selected.setParent(selectedParent);
+                selected.getMarks().clear();
+                for (int i = 0; i < model.getSize(); i++) {
+                    selected.getMarks().add(model.get(i));
+                }
+                onEdit.run();
+                dialog.dispose();
             }
-            oldEntry.setName(nameField.getText());
-            oldEntry.setCat(Objects.requireNonNull(catCombo.getSelectedItem()).toString());
-            oldEntry.getMarks().clear();
-            for (int i = 0; i < model.getSize(); i++) {
-                oldEntry.getMarks().add(model.get(i));
-            }
-            mainUI.recreateTree();
-            dialog.dispose();
         });
 
         delMarkBtn.addActionListener(e -> {
             if (markJList.getSelectedValue() != null) {
+                markChanged = true;
                 model.removeElement(markJList.getSelectedValue());
                 markEditPane.setVisible(false);
             }
@@ -76,6 +88,7 @@ public class EntryEditUI {
             selectedValue.setTime(Calendar.getInstance());
             selectedValue.setTitle(markTitleField.getText());
             editTimeLbl.setText(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(selectedValue.getTime().getTime()));
+            markChanged = true;
             markJList.updateUI();
         });
 
@@ -88,12 +101,17 @@ public class EntryEditUI {
             markEditPane.setVisible(true);
         });
 
-        addMarkBtn.addActionListener(e -> model.addElement(new Mark("新标记", "")));
-    }
+        addMarkBtn.addActionListener(e -> {
+            markChanged = true;
+            model.addElement(new Mark("新标记", ""));
+        });
 
-    public boolean show() {
+        browseBtn.addActionListener(e -> {
+            selectedParent = new PathBrowser(owner, root, selected).show();
+            if (selectedParent == null) return;
+            pathField.setText(selectedParent.getPathString());
+        });
+
         dialog.setVisible(true);
-
-        return oldEntry.getName().equals(nameField.getText()) && oldEntry.getCat().equals(catCombo.getSelectedItem());
     }
 }

@@ -1,4 +1,4 @@
-package xyz.zcraft.idk.util;
+package xyz.zcraft.util.iis.util;
 
 import java.io.Serializable;
 import java.util.Calendar;
@@ -7,6 +7,12 @@ public class Mark implements Serializable {
     private String content;
     private String title;
     private Calendar time;
+
+    public Mark(String title, String content) {
+        this.content = content;
+        this.title = title;
+        this.time = Calendar.getInstance();
+    }
 
     public String getTitle() {
         return title;
@@ -35,11 +41,5 @@ public class Mark implements Serializable {
     @Override
     public String toString() {
         return title;
-    }
-
-    public Mark(String title, String content) {
-        this.content = content;
-        this.title = title;
-        this.time = Calendar.getInstance();
     }
 }

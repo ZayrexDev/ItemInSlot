@@ -8,23 +8,24 @@ import java.awt.*;
 import java.util.Comparator;
 import java.util.List;
 
-public class RankUI {
+public class StatUI {
+    private static final String[] columnNames = {"标题", "路径", "次数"};
     private JTable rankTable;
     private JPanel rootPane;
-    private final JDialog dialog;
 
-    public RankUI(Frame owner, Node rootNode) {
-        dialog = new JDialog(owner, "标记排行", true);
+    public StatUI(Frame owner, Node rootNode) {
+        initTable(rootNode);
+        initDialog(owner);
+    }
+
+    private void initDialog(Frame owner) {
+        JDialog dialog = new JDialog(owner, "统计信息", true);
         dialog.setContentPane(rootPane);
         dialog.pack();
         dialog.setLocationRelativeTo(owner);
-
-        initTable(rootNode);
-
         dialog.setVisible(true);
     }
 
-    private static final String[] columnNames = {"标题", "路径", "次数"};
     private void initTable(Node rootNode) {
         final DefaultTableModel dataModel = new DefaultTableModel(columnNames, 0) {
             @Override
