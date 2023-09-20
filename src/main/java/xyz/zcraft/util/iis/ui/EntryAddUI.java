@@ -1,5 +1,7 @@
 package xyz.zcraft.util.iis.ui;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xyz.zcraft.util.iis.util.Node;
 
 import javax.swing.*;
@@ -21,7 +23,7 @@ public class EntryAddUI {
     private JPanel rootPanel;
     private JButton importBtn;
     private Node selectedParent = null;
-
+    private static final Logger LOGGER = LogManager.getLogger(EntryEditUI.class);
     public EntryAddUI(Frame owner, Node root, Runnable onAdd) {
         dialog = new JDialog(owner, "添加项目", true);
         dialog.setContentPane(rootPanel);
@@ -39,9 +41,12 @@ public class EntryAddUI {
         confirmBtn.addActionListener(e -> {
             if (!titleField.getText().trim().equals("")) {
                 if (selectedParent != null) {
-                    selectedParent.getChild().add(new Node(titleField.getText(), selectedParent));
+                    final Node e1 = new Node(titleField.getText(), selectedParent);
+                    selectedParent.getChild().add(e1);
                     onAdd.run();
                     dialog.dispose();
+
+                    LOGGER.info("Added new node: " + e1);
                 } else {
                     JOptionPane.showMessageDialog(dialog, "未指定路径", "警告", JOptionPane.WARNING_MESSAGE);
                 }
@@ -65,6 +70,7 @@ public class EntryAddUI {
                     rootNode = (Node) ois.readObject();
                     rootNode.setParent(selectedParent);
                 } catch (IOException | ClassNotFoundException ex) {
+                    LOGGER.error("Error in importing from " + selected.toAbsolutePath(), ex);
                     JOptionPane.showMessageDialog(dialog, "打开 " + selected.toAbsolutePath() + " 失败:" + ex, "错误", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
@@ -72,6 +78,8 @@ public class EntryAddUI {
                 selectedParent.getChild().add(rootNode);
                 onAdd.run();
                 dialog.dispose();
+
+                LOGGER.info("Imported node from" + selected.toAbsolutePath());
             } else {
                 JOptionPane.showMessageDialog(dialog, "未指定路径", "警告", JOptionPane.WARNING_MESSAGE);
             }

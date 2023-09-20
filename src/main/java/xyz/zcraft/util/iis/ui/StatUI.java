@@ -1,5 +1,7 @@
 package xyz.zcraft.util.iis.ui;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xyz.zcraft.util.iis.util.Node;
 
 import javax.swing.*;
@@ -25,6 +27,7 @@ public class StatUI {
         dialog.setLocationRelativeTo(owner);
         dialog.setVisible(true);
     }
+    private static final Logger LOGGER = LogManager.getLogger(StatUI.class);
 
     private void initTable(Node rootNode) {
         final DefaultTableModel dataModel = new DefaultTableModel(columnNames, 0) {
@@ -35,9 +38,12 @@ public class StatUI {
         };
 
         rankTable.setModel(dataModel);
+
+        LOGGER.info("Collecting statistics");
         final List<Node> collect = rootNode.getAllChild();
         collect.sort(Comparator.comparingInt(o -> o.getChild().size()));
         collect.forEach(entry -> dataModel.addRow(new Object[]{entry, entry.getPathString(), entry.getMarks().size()}));
+        LOGGER.info("Statistics collected. " + collect.size() + " nodes collected.");
 
         rankTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }

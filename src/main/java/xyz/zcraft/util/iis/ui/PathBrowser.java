@@ -1,5 +1,7 @@
 package xyz.zcraft.util.iis.ui;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xyz.zcraft.util.iis.util.CustomTreeModel;
 import xyz.zcraft.util.iis.util.Node;
 
@@ -8,6 +10,7 @@ import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 
 public class PathBrowser {
+    private static final Logger LOGGER = LogManager.getLogger(PathBrowser.class);
     private final JDialog dialog;
     private JTree browseTree;
     private JPanel rootPanel;
@@ -51,8 +54,10 @@ public class PathBrowser {
 
     public Node show() {
         dialog.setVisible(true);
-        if (browseTree.getSelectionModel().getSelectionPath() != null)
-            return ((Node) browseTree.getLastSelectedPathComponent());
-        else return null;
+        if (browseTree.getSelectionModel().getSelectionPath() != null) {
+            final Node lastSelectedPathComponent = (Node) browseTree.getLastSelectedPathComponent();
+            LOGGER.info("Selected parent: " + lastSelectedPathComponent);
+            return lastSelectedPathComponent;
+        } else return null;
     }
 }

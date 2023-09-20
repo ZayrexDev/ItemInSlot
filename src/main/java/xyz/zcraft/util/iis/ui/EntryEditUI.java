@@ -1,5 +1,7 @@
 package xyz.zcraft.util.iis.ui;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xyz.zcraft.util.iis.util.Mark;
 import xyz.zcraft.util.iis.util.Node;
 
@@ -24,11 +26,11 @@ public class EntryEditUI {
     private JButton saveMarkBtn;
     private JPanel markEditPane;
     private JTextField markTitleField;
-    private JPanel pathPane;
-    private JPanel markPane;
     private JTextField pathField;
     private JButton browseBtn;
     private Node selectedParent = null;
+
+    private final static Logger LOGGER = LogManager.getLogger(EntryEditUI.class);
 
     public EntryEditUI(Frame owner, Node selected, Node root, Runnable onEdit) {
         dialog = new JDialog(owner, "编辑项目", true);
@@ -62,9 +64,9 @@ public class EntryEditUI {
                     && !markChanged) {
                 dialog.dispose();
             } else {
-                System.out.println("ee");
+                LOGGER.info("Submitting changes to node " + selected);
                 selected.setTitle(nameField.getText());
-                selected.setParent(selectedParent);
+                if (selectedParent != null) selected.setParent(selectedParent);
                 selected.getMarks().clear();
                 for (int i = 0; i < model.getSize(); i++) {
                     selected.getMarks().add(model.get(i));

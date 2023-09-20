@@ -1,5 +1,7 @@
 package xyz.zcraft.util.iis.ui;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xyz.zcraft.util.iis.util.CustomTreeModel;
 import xyz.zcraft.util.iis.util.Node;
 
@@ -22,6 +24,8 @@ public class MainUI {
     private boolean changed;
     private boolean autoRefresh = true;
     private Path origPath;
+    private static final Logger LOGGER = LogManager.getLogger(MainUI.class);
+
 
     public MainUI(Node rootNode, Path origPath) {
         this.rootNode = rootNode;
@@ -44,6 +48,7 @@ public class MainUI {
     }
 
     private void initMenuBar() {
+        LOGGER.info("Initializing menu bar");
         JMenuBar menuBar = new JMenuBar();
 
         JMenu fileMenu = new JMenu("文件");
@@ -100,6 +105,7 @@ public class MainUI {
         menuBar.add(helpMenu);
 
         jFrame.setJMenuBar(menuBar);
+        LOGGER.info("Menu bar initialized");
     }
 
     private void openEditWindow() {
@@ -130,6 +136,7 @@ public class MainUI {
         if (!selectedFile.getName().endsWith(".iis")) {
             selectedFile = new File(jFileChooser.getCurrentDirectory(), selectedFile.getName() + ".iis");
         }
+        LOGGER.info("Path selected:" + selectedFile.toPath());
         return selectedFile.toPath();
     }
 
@@ -141,7 +148,9 @@ public class MainUI {
             objectOutputStream.writeObject(rootNode);
             objectOutputStream.flush();
             changed = false;
+            LOGGER.info("Successfully saved data to " + origPath);
         } catch (IOException ex) {
+            LOGGER.error("Error in saving data to" + origPath, ex);
             JOptionPane.showMessageDialog(jFrame, "保存至 " + selected.toAbsolutePath() + " 失败:" + ex, "错误", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -159,12 +168,15 @@ public class MainUI {
             objectOutputStream.writeObject(rootNode);
             objectOutputStream.flush();
             changed = false;
+            LOGGER.info("Successfully saved data to " + origPath);
         } catch (IOException ex) {
+            LOGGER.error("Error in saving data to" + origPath, ex);
             JOptionPane.showMessageDialog(jFrame, "保存至 " + origPath.toAbsolutePath() + " 失败:" + ex, "错误", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     public void create() {
+        LOGGER.info("Creating main UI");
         jFrame = new JFrame();
         jFrame.setContentPane(root);
         jFrame.pack();
@@ -192,6 +204,7 @@ public class MainUI {
     }
 
     void recreateTree() {
+        LOGGER.info("Updating tree");
         entryTree.setModel(new CustomTreeModel(rootNode));
         entryTree.updateUI();
     }
